@@ -1,33 +1,32 @@
 package com.ruoyi.web.controller.village;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-
-import com.ruoyi.common.utils.file.FileUtils;
-import com.ruoyi.framework.util.ShiroUtils;
-import com.ruoyi.system.domain.SysUser;
-import com.ruoyi.system.service.ISysUserService;
-import com.ruoyi.village.util.bFileUtil1;
+import com.ruoyi.common.annotation.Log;
+import com.ruoyi.common.base.AjaxResult;
+import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.page.TableDataInfo;
 import com.ruoyi.common.utils.DateUtil;
+import com.ruoyi.common.utils.ExcelUtil;
+import com.ruoyi.framework.util.ShiroUtils;
+import com.ruoyi.framework.web.base.BaseController;
+import com.ruoyi.system.domain.SysDept;
+import com.ruoyi.system.domain.SysUser;
+import com.ruoyi.system.service.ISysDeptService;
+import com.ruoyi.system.service.ISysUserService;
+import com.ruoyi.village.domain.Files;
+import com.ruoyi.village.domain.Project;
+import com.ruoyi.village.service.IProjectService;
+import com.ruoyi.village.util.bFileUtil1;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.*;
-import com.ruoyi.common.annotation.Log;
-import com.ruoyi.common.enums.BusinessType;
-import com.ruoyi.village.domain.Project;
-import com.ruoyi.village.domain.Files;
-import com.ruoyi.village.service.IProjectService;
-import com.ruoyi.framework.web.base.BaseController;
-import com.ruoyi.common.page.TableDataInfo;
-import com.ruoyi.common.base.AjaxResult;
-import com.ruoyi.common.utils.ExcelUtil;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 重大项目 信息操作处理
@@ -43,8 +42,11 @@ public class ProjectController extends BaseController
 
 	@Autowired
 	private IProjectService projectService;
-    @Autowired
-    private ISysUserService sysUserService;
+	@Autowired
+	private ISysUserService sysUserService;
+	@Autowired
+	private ISysDeptService deptService;
+
 	@RequiresPermissions("village:project:view")
 	@GetMapping()
 	public String project()
@@ -60,28 +62,28 @@ public class ProjectController extends BaseController
 	@ResponseBody
 	public TableDataInfo list(Project project)
 	{ //从session中获取当前登陆用户的 userid
-        SysUser currentUser = ShiroUtils.getSysUser();
-        Long userid =  currentUser.getUserId();
-        int returnId = new Long(userid).intValue();
-        //通过所获取的userid去用户表中查询用户所属区域的Roleid
-        int roleid = sysUserService.selectRoleid(returnId);
-        if(project.getAid() == null && (roleid == 1)) {
-		startPage();
-		List<Project> list = projectService.selectProjectList(project);
-		return getDataTable(list);
-        }else if(project.getAid() != null){
-            startPage();
-            List<Project> list = projectService.selectProjectList(project);
-            return getDataTable(list);
-        }else{
-            String aid;
-            //通过所获取的userid去用户表中查询用户所属区域的Aid
-            aid = sysUserService.selectAid(returnId);
-            project.setAid(aid);
-            startPage();
-            List<Project> list = projectService.selectProjectList(project);
-            return getDataTable(list);
-        }
+		SysUser currentUser = ShiroUtils.getSysUser();
+		Long userid =  currentUser.getUserId();
+		int returnId = new Long(userid).intValue();
+		//通过所获取的userid去用户表中查询用户所属区域的Roleid
+		int roleid = sysUserService.selectRoleid(returnId);
+		if(project.getAid() == null && (roleid == 1)) {
+			startPage();
+			List<Project> list = projectService.selectProjectList(project);
+			return getDataTable(list);
+		}else if(project.getAid() != null){
+			startPage();
+			List<Project> list = projectService.selectProjectList(project);
+			return getDataTable(list);
+		}else{
+			String aid;
+			//通过所获取的userid去用户表中查询用户所属区域的Aid
+			aid = sysUserService.selectAid(returnId);
+			project.setAid(aid);
+			startPage();
+			List<Project> list = projectService.selectProjectList(project);
+			return getDataTable(list);
+		}
 	}
 
 
@@ -104,12 +106,12 @@ public class ProjectController extends BaseController
 	@GetMapping("/add")
 	public String add(ModelMap mmap)
 	{
-        //从session中获取当前登陆用户的 username、phone、userid
-        SysUser currentUser = ShiroUtils.getSysUser();
-        String username =  currentUser.getUserName();
-        String phone =  currentUser.getPhonenumber();
+		//从session中获取当前登陆用户的 username、phone、userid
+		SysUser currentUser = ShiroUtils.getSysUser();
+		String username =  currentUser.getUserName();
+		String phone =  currentUser.getPhonenumber();
 		Long userid =  currentUser.getUserId();
-        String aid;
+		String aid;
 		int returnId = new Long(userid).intValue();
 		//通过所获取的userid去广播用户表中查询用户所属区域的Aid
 		aid = sysUserService.selectAid(returnId);
@@ -127,7 +129,7 @@ public class ProjectController extends BaseController
 	@Log(title = "新增项目", businessType = BusinessType.INSERT)
 	@PostMapping(value = "/add")
 	@ResponseBody
-    /*这里加入Project project是为了获得html页面form返回来的数据*/
+	/*这里加入Project project是为了获得html页面form返回来的数据*/
 	public AjaxResult addSave(Project project,@RequestParam(value = "files") MultipartFile file,
 							  @RequestParam(value = "filename", required = false) String fname,
 							  @RequestParam(value = "flenth" ,required = false)String flenth, //时长
@@ -139,7 +141,7 @@ public class ProjectController extends BaseController
 		System.out.println(dateFormat.format(date));
 		String maxfileid = dateFormat.format(date); //获取文件上传时的时间参数字符串作为文件名，防止储存同名文件
 
-        //图片上传调用工具类
+		//图片上传调用工具类
 		try{
 			//保存图片
 			Files g = bFileUtil1.uplodeFile(maxfileid,file,fname,flenth,fsize,year);
@@ -173,9 +175,9 @@ public class ProjectController extends BaseController
 	@PostMapping(value ="/edit")
 	@ResponseBody
 	public AjaxResult editSave(Project project)
-{
-	return toAjax(projectService.updateProject(project));
-}
+	{
+		return toAjax(projectService.updateProject(project));
+	}
 
 	/**
 	 * 删除重大项目
@@ -201,16 +203,49 @@ public class ProjectController extends BaseController
 	}
 
 	/**
-	 * 下载文件
+	 * 选择部门树
 	 */
-//	@GetMapping("/downloadFile/{fileId}")
-//	public void downloadFile(@PathVariable("fileId") Integer fileId, HttpServletResponse response, HttpServletRequest request) throws Exception
-//	{
-//		String path = "http://110.53.162.165/test/a.jpg";
-//		response.setCharacterEncoding("utf-8");
-//		response.setContentType("multipart/form-data");
-//		response.setHeader("Content-Disposition",
-//				"attachment;fileName=" + "aaa.jpg");
-//		FileUtils.writeBytes(path, response.getOutputStream());
-//	}
+	@GetMapping("/selectDeptTree/{deptId}")
+	public String selectDeptTree(@PathVariable("deptId") String deptId, ModelMap mmap)
+	{
+		Long did=Long.parseLong(deptId);//返回基本数据类型long
+		mmap.put("dept", deptService.selectDeptById2(did));//传到tree页面
+		/*return prefix + "/tree";*/
+		return prefix + "/listProBroadTree";
+	}
+
+	/**
+	 * 查询用户列表
+	 */
+	@PostMapping("/listProBroad")
+	@ResponseBody
+	public TableDataInfo listProBroad(SysUser user)
+	{
+		startPage();
+		List<SysUser> list = sysUserService.selectUserList(user);
+		return getDataTable(list);
+	}
+
+	/**
+	 * 加载用户选择列表树
+	 */
+	@GetMapping("/listProBroadTree")
+	@ResponseBody
+	public List<Map<String, Object>> listProBroadTree()
+	{
+		List<Map<String, Object>> tree = deptService.selectDeptTree2(new SysDept());
+		return tree;
+	}
+
+	/**
+	 * 加载部门列表树
+	 */
+	@GetMapping("/treeData")
+	@ResponseBody
+	public List<Map<String, Object>> treeData()
+	{
+		List<Map<String, Object>> tree = deptService.selectDeptTree2(new SysDept());
+		return tree;
+
+	}
 }
